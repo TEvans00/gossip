@@ -196,6 +196,7 @@ ruleset gossip {
   rule trigger_message {
     select when gossip heartbeat
     pre {
+      // temperatures propagate faster when slightly more seen messages are sent than rumor messages
       message_type = random:integer(2)
     }
     if message_type then noop()
