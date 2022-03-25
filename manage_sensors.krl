@@ -24,8 +24,7 @@ ruleset manage_sensors {
           eci = sensor{"Tx"}
           host = sensor{"Tx_host"}.defaultsTo(meta:host)
           profile = wrangler:picoQuery(eci,"sensor_profile","profile",{},host)
-          info = sensor.put("name", profile{"name"})
-          info
+          sensor.put("name", profile{"name"})
         }
       )
     }
@@ -235,5 +234,58 @@ ruleset manage_sensors {
       ent:reports{rcn} := ent:reports{rcn}.put(["sensors_responded"], num_responded)
       ent:reports{rcn} := ent:reports{rcn}.put(["temperatures"], report_data)
     }
+  }
+
+  rule set_gossip_period {
+    select when gossip:set_period
+    foreach sensors() setting(sensor)
+    event:send({
+      "eci":sensor{"Tx"},
+      "domain":"gossip",
+      "type":"adjust_heartbeat",
+      "attrs": {"period": event:attrs{"period"} || 30}
+    }, sensor{"Tx_host"})
+  }
+
+  rule stop_gossip {
+    select when gossip:stop
+    foreach sensors() setting(sensor)
+    event:send({
+      "eci":sensor{"Tx"},
+      "domain":"gossip",
+      "type":"stop_heartbeat"
+    }, sensor{"Tx_host"})
+  }
+
+  rule reset_gossip_state {
+    select when gossip:reset_state
+    foreach sensors() setting(sensor)
+    event:send({
+      "eci":sensor{"Tx"},
+      "domain":"gossip",
+      "type":"reset"
+    }, sensor{"Tx_host"})
+  }
+
+  rule stop_emitters {
+    select when sensors:stop_emitters
+    foreach sensors() setting(sensor)
+    event:send({
+      "eci":sensor{"Tx"},
+      "domain":"emitter",
+      "type":"new_state",
+      "attrs": {"pause": true}
+    }, sensor{"Tx_host"})
+  }
+
+  rule start_emitters {
+    select when sensors:start_emitters
+    foreach sensors() setting(sensor)
+    event:send({
+      "eci":sensor{"Tx"},
+      "domain":"emitter",
+      "type":"new_state",
+      "attrs": {"pause": false}
+    }, sensor{"Tx_host"})
   }
 }
